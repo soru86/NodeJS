@@ -1,0 +1,6 @@
+node_modules/
+dist/
+tasks.json
+.env
+coverage/
+npm-debug.log*
