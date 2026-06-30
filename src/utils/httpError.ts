@@ -1,4 +1,3 @@
-// @ts-ignore
 /**
  * A small error type that carries an HTTP status code. Throw this from the
  * service/controller layer and the central error handler will translate it into

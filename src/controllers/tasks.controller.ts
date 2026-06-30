@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import {
   createTaskSchema,
   listTasksQuerySchema,
+  updateTaskSchema,
 } from '../models/task.model';
 import { TasksService } from '../services/tasks.service';
 
@@ -10,9 +11,8 @@ import { TasksService } from '../services/tasks.service';
  * Errors are passed to `next(err)` so the central error handler can format them.
  */
 export class TasksController {
-  constructor(private readonly service: TasksService) {}
+  constructor(private readonly service: TasksService) { }
 
-  // ---- Reference implementation: list (GET /api/tasks) ----------------------
   list = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const query = listTasksQuerySchema.parse(req.query);
@@ -42,24 +42,31 @@ export class TasksController {
     }
   };
 
-  // ---- TODO(candidate): getById (GET /api/tasks/:id) ------------------------
   getById = async (req: Request, res: Response, next: NextFunction) => {
-    // TODO(candidate): Return a single task. Respond 404 (via the service's
-    // notFound error) when it doesn't exist.
-    next(new Error('Not implemented: TasksController.getById'));
+    try {
+      const task = await this.service.getById(req.params.id);
+      res.json({ data: task });
+    } catch (err) {
+      next(err);
+    }
   };
 
-  // ---- TODO(candidate): update (PUT/PATCH /api/tasks/:id) -------------------
   update = async (req: Request, res: Response, next: NextFunction) => {
-    // TODO(candidate): Validate the body with updateTaskSchema, call the
-    // service, and return the updated task.
-    next(new Error('Not implemented: TasksController.update'));
+    try {
+      const input = updateTaskSchema.parse(req.body);
+      const task = await this.service.update(req.params.id, input);
+      res.json({ data: task });
+    } catch (err) {
+      next(err);
+    }
   };
 
-  // ---- TODO(candidate): remove (DELETE /api/tasks/:id) ---------------------
   remove = async (req: Request, res: Response, next: NextFunction) => {
-    // TODO(candidate): Delete the task and return an appropriate status
-    // (e.g. 204 No Content).
-    next(new Error('Not implemented: TasksController.remove'));
+    try {
+      await this.service.remove(req.params.id);
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
   };
 }

@@ -28,12 +28,15 @@ export const createTaskSchema = z.object({
 });
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 
-// TODO(candidate): Define `updateTaskSchema` for PUT/PATCH /api/tasks/:id.
-//   - All fields should be optional (partial update), but at least one must be present.
-//   - Reuse the field rules above where possible (hint: createTaskSchema.partial()).
-export const updateTaskSchema = z.object({
-  // TODO(candidate): fill this in.
-});
+export const updateTaskSchema = createTaskSchema
+  .partial()
+  .extend({
+    description: z.string().trim().max(2000).nullable().optional(),
+    dueDate: z.string().datetime().nullable().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided',
+  });
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 
 /**

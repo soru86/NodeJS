@@ -16,8 +16,7 @@ import {
  * mutation (and loaded from it on startup). Pass `filePath = null` for a
  * pure in-memory store with no file I/O — that's what the tests use.
  *
- * Persistence (load/save) is provided for you. Your job is to implement the
- * data operations on top of it.
+ * Persistence (load/save) is handled internally; mutations call persist().
  */
 export class JsonFileTaskRepository implements TaskRepository {
   private tasks = new Map<string, Task>();
@@ -62,14 +61,32 @@ export class JsonFileTaskRepository implements TaskRepository {
     return task;
   }
 
-  // ---- Partly done: list. Pagination works; filtering/search is your TODO. --
   async list(options: ListOptions): Promise<ListResult> {
     let matches = [...this.tasks.values()];
 
-    // TODO(candidate): apply filtering before pagination:
-    //   - when options.status is set, keep only tasks with that status
-    //   - when options.q is set, keep only tasks whose title OR description
-    //     contains the query (case-insensitive)
+    if (options.status) {
+      matches = matches.filter((task) => task.status === options.status);
+    }
+
+    if (options.q) {
+      const query = options.q.toLowerCase();
+      matches = matches.filter(
+        (task) =>
+          task.title.toLowerCase().includes(query) ||
+          (task.description?.toLowerCase().includes(query) ?? false)
+      );
+    }
+
+    matches.sort((a, b) => {
+      if (a.dueDate === null && b.dueDate === null) {
+        return a.createdAt.localeCompare(b.createdAt);
+      }
+      if (a.dueDate === null) return 1;
+      if (b.dueDate === null) return -1;
+      const byDueDate = a.dueDate.localeCompare(b.dueDate);
+      if (byDueDate !== 0) return byDueDate;
+      return a.createdAt.localeCompare(b.createdAt);
+    });
 
     const total = matches.length;
     const start = (options.page - 1) * options.limit;
@@ -77,23 +94,29 @@ export class JsonFileTaskRepository implements TaskRepository {
     return { items, total };
   }
 
-  // ---- TODO(candidate): findById --------------------------------------------
   async findById(id: string): Promise<Task | null> {
-    // TODO(candidate): Return the task or null if it doesn't exist.
-    throw new Error('Not implemented: JsonFileTaskRepository.findById');
+    return this.tasks.get(id) ?? null;
   }
 
-  // ---- TODO(candidate): update ----------------------------------------------
   async update(id: string, data: UpdateTaskData): Promise<Task | null> {
-    // TODO(candidate): Apply a partial update to only the provided fields, bump
-    // updatedAt, persist(), and return the updated Task (or null if missing).
-    throw new Error('Not implemented: JsonFileTaskRepository.update');
+    const existing = this.tasks.get(id);
+    if (!existing) return null;
+
+    const updated: Task = {
+      ...existing,
+      ...data,
+      id: existing.id,
+      createdAt: existing.createdAt,
+      updatedAt: new Date().toISOString(),
+    };
+    this.tasks.set(id, updated);
+    this.persist();
+    return updated;
   }
 
-  // ---- TODO(candidate): delete ----------------------------------------------
   async delete(id: string): Promise<boolean> {
-    // TODO(candidate): Remove the task, persist(), and return whether a task
-    // was actually removed.
-    throw new Error('Not implemented: JsonFileTaskRepository.delete');
+    const removed = this.tasks.delete(id);
+    if (removed) this.persist();
+    return removed;
   }
 }

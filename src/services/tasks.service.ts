@@ -2,13 +2,27 @@ import {
   CreateTaskInput,
   ListTasksQuery,
   Task,
+  TaskStatus,
   UpdateTaskInput,
 } from '../models/task.model';
 import {
   ListResult,
   TaskRepository,
 } from '../repositories/task.repository';
-import { notFound } from '../utils/httpError';
+import { badRequest, notFound } from '../utils/httpError';
+
+const ALLOWED_STATUS_TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
+  todo: ['in_progress', 'done'],
+  in_progress: ['todo', 'done'],
+  done: [],
+};
+
+function assertValidStatusTransition(from: TaskStatus, to: TaskStatus): void {
+  if (from === to) return;
+  if (!ALLOWED_STATUS_TRANSITIONS[from].includes(to)) {
+    throw badRequest(`Invalid status transition from ${from} to ${to}`);
+  }
+}
 
 /**
  * Business logic for tasks. The service depends on the TaskRepository interface,
@@ -27,10 +41,7 @@ export class TasksService {
     });
   }
 
-  // ---- TODO(candidate): list ------------------------------------------------
   async list(query: ListTasksQuery): Promise<ListResult> {
-    // TODO(candidate): Translate the validated query into repository ListOptions
-    // and return the result. Keep pagination metadata intact.
     return this.repo.list({
       status: query.status,
       q: query.q,
@@ -39,24 +50,27 @@ export class TasksService {
     });
   }
 
-  // ---- TODO(candidate): getById ---------------------------------------------
   async getById(id: string): Promise<Task> {
-    // TODO(candidate): Return the task, or throw `notFound()` if it doesn't exist.
     const task = await this.repo.findById(id);
     if (!task) throw notFound(`Task ${id} not found`);
     return task;
   }
 
-  // ---- TODO(candidate): update ----------------------------------------------
   async update(id: string, input: UpdateTaskInput): Promise<Task> {
-    // TODO(candidate): Apply the update via the repository. Throw `notFound()`
-    // if the task does not exist. (Bonus: enforce status transition rules.)
-    throw new Error('Not implemented: TasksService.update');
+    const existing = await this.repo.findById(id);
+    if (!existing) throw notFound(`Task ${id} not found`);
+
+    if (input.status !== undefined) {
+      assertValidStatusTransition(existing.status, input.status);
+    }
+
+    const task = await this.repo.update(id, input);
+    if (!task) throw notFound(`Task ${id} not found`);
+    return task;
   }
 
-  // ---- TODO(candidate): remove ----------------------------------------------
   async remove(id: string): Promise<void> {
-    // TODO(candidate): Delete the task. Throw `notFound()` if it didn't exist.
-    throw new Error('Not implemented: TasksService.remove');
+    const removed = await this.repo.delete(id);
+    if (!removed) throw notFound(`Task ${id} not found`);
   }
 }
