@@ -356,7 +356,7 @@ describe('Middleware — request logging and rate limiting', () => {
     await request(loggingApp).get('/health');
 
     expect(logSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/^GET \/health 200 \d+ms$/)
+      expect.stringMatching(/^GET : \[.+\] - \[\/health\] 200 \d+ms$/)
     );
     logSpy.mockRestore();
   });
